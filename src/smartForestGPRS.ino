@@ -24,17 +24,28 @@
  * https://randomnerdtutorials.com/esp32-cam-pir-motion-detector-photo-capture/             *
  * by Sara Santos and Rui Santos                                                            *
  *                                                                                          *
- * Others:                                                                                  *
- * https://lastminuteengineers.com/esp32-deep-sleep-wakeup-sources/                         *
+ * EloquentTinyML:                                                                          *
  * https://eloquentarduino.github.io/2020/01/easy-tinyml-on-esp32-and-arduino/              *
+ * by Simone Salerno                                                                        *
+ *                                                                                          *
+ * Last Minute Engineers:                                                                   *
+ * https://lastminuteengineers.com/esp32-deep-sleep-wakeup-sources/                         *
+ * by Unknown                                                                               *
  ********************************************************************************************/
 
 #include <EEPROM.h>
+#include <EloquentTinyML.h>
+#include <eloquent_tinyml/tensorflow.h>
+#include "sine_model.h"
 #include "SD_MMC.h"
 #include "arducam_esp32s_camera.h"
 #include "driver/rtc_io.h"
 
 #define PIR_PIN 33
+
+#define N_INPUTS 1
+#define N_OUTPUTS 1
+#define TENSOR_ARENA_SIZE 2*1024 // adjust value if needed
 
 #define EEPROM_SIZE             4
 #define PICTURE_INDEX_ADDRESS   0
@@ -52,8 +63,10 @@ String directories[] = {
 RTC_DATA_ATTR int falseAlarmCounter = 0;
 RTC_DATA_ATTR int bootCounter = 0;
 
+Eloquent::TinyML::TensorFlow::TensorFlow<N_INPUTS, N_OUTPUTS, TENSOR_ARENA_SIZE> tf;
+
 void enterDeepSleep() {
-  delay(100); // small delay for serial prints
+  delay(100); // small delay for possible serial prints
 
   //rtc_gpio_pullup_dis(GPIO_NUM_33);
   //rtc_gpio_pulldown_en(GPIO_NUM_33);
@@ -71,12 +84,12 @@ void enterDeepSleep() {
 void doRandomStuff() {
   Serial.print("Powering up the flux compensator");
   for (int i=0; i<3; i++) {
-    delay(2000);
+    delay(2250);
     Serial.print(".");
   }
-  delay(2000);
+  delay(2250);
   Serial.print(" Done!");
-  delay(2000);
+  delay(1000);
   Serial.println();
 }
 
@@ -169,11 +182,34 @@ void setup(){
     file.close();
     Serial.printf("Saved picture to %s\n", currentPicturePath.c_str());
   }
+  
+  // using sine TinyML model (proof of concept)
+  Serial.println("\nTinyML proof of concept:");
+  tf.begin(sine_model);
+  if (!tf.isOk()) {
+    Serial.print("ERROR: ");
+    Serial.println(tf.getErrorMessage());
+  } else {
+    for (float i = 0; i < 10; i++) {
+      // pick x from 0 to PI
+      float x = 3.14 * i / 10;
+      float y = sin(x);
+      float input[1] = { x };
+      float predicted = tf.predict(input);
 
-  // build report
+      Serial.print("sin(");
+      Serial.print(x);
+      Serial.print(") = ");
+      Serial.print(y);
+      Serial.print("\t predicted: ");
+      Serial.println(predicted);
+    }
+    Serial.println();
+  }
+  
   // save report to sd
   // send report via gsm
-  // will take at least 10 seconds (GPS and transmission of report)
+  // will take at least 10 seconds (GPS and transmission report)
   doRandomStuff();
   
   // clean up and deep sleep
