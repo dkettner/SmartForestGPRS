@@ -173,7 +173,7 @@ void setup(){
   // build report
   // save report to sd
   // send report via gsm
-  // will take at least 10 seconds (gps and transmission of transport)
+  // will take at least 10 seconds (GPS and transmission of report)
   doRandomStuff();
   
   // clean up and deep sleep
