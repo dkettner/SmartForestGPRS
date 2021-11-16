@@ -76,9 +76,9 @@ void enterDeepSleep() {
   analogRead(PIR_PIN);
   analogRead(PIR_PIN);
   
-  gpio_set_level(GPIO_NUM_33, 0);
+  //gpio_set_level(GPIO_NUM_33, 0);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,1);
-  esp_deep_sleep_start();
+  esp_light_sleep_start();
 }
 
 void doRandomStuff() {
@@ -110,6 +110,7 @@ void setup(){
    * -> For further development a different/custom board should be used.
    */
   if (analogRead(PIR_PIN) < 4000) {
+    Serial.printf("AnalogRead of PIR sensor: %i", analogRead(PIR_PIN));
     falseAlarmCounter++;
     Serial.printf("False alarm! Current false alarm ratio: %d/%d\n", falseAlarmCounter, bootCounter);
     Serial.println("Entering deep sleep now.");
@@ -135,6 +136,7 @@ void setup(){
     // What to do? restart?
   } else {
     Serial.println("Camera capture done");
+    Serial.printf("%lu\n", millis());
   }
 
   // initialize sd
@@ -216,6 +218,7 @@ void setup(){
   arducam_camera_fb_return(frameBuffer);
   Serial.println("Entering deep sleep now.");
   enterDeepSleep();
+  Serial.println("Sike nigga, you thought");
 }
 
 void loop() {}
