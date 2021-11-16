@@ -76,9 +76,9 @@ void enterDeepSleep() {
   analogRead(PIR_PIN);
   analogRead(PIR_PIN);
   
-  //gpio_set_level(GPIO_NUM_33, 0);
+  gpio_set_level(GPIO_NUM_33, 0);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,1);
-  esp_light_sleep_start();
+  esp_deep_sleep_start();
 }
 
 void doRandomStuff() {
@@ -218,7 +218,6 @@ void setup(){
   arducam_camera_fb_return(frameBuffer);
   Serial.println("Entering deep sleep now.");
   enterDeepSleep();
-  Serial.println("Sike nigga, you thought");
 }
 
 void loop() {}
