@@ -3,12 +3,17 @@
  * https://www.arducam.com/docs/esp32-camera/the-arducam-iotai/                             *
  *                                                                                          *
  * Initializes camera,                                                                      *
- * takes a picture,                                                                         *
  * initializes storage,                                                                     *
  * creates directories,                                                                     *
+ * preapares a dummy TinyML model,                                                          *
+ * enters light sleep with wakeup conditions (PIR sensor).                                  *
+ * If presence is dectected,                                                                *
+ * wakes up,                                                                                *
+ * takes a picture,                                                                         *
  * manages picture index with EEPROM,                                                       *
  * saves picture to sd card,                                                                *
- * enters deep sleep with wakeup conditions (PIR sensor).                                   *
+ * performs dummy calculations on model,                                                    *
+ * enters light sleep again.                                                                *
  *                                                                                          *
  * This code is based on the following sources:                                             *
  *                                                                                          *
@@ -60,15 +65,18 @@ String directories[] = {
   ERRORS_PATH
 };
 
-RTC_DATA_ATTR int falseAlarmCounter = 0;
-RTC_DATA_ATTR int bootCounter = 0;
+int falseAlarmCounter = 0;
+camera_fb_t * frameBuffer = NULL;
+unsigned long currentPictureIndex = 0;
+String currentPicturePath;
+File file;
 
 Eloquent::TinyML::TensorFlow::TensorFlow<N_INPUTS, N_OUTPUTS, TENSOR_ARENA_SIZE> tf;
 
-void enterDeepSleep() {
+void enterLightSleep() {
   delay(100); // small delay for possible serial prints
 
-  //rtc_gpio_pullup_dis(GPIO_NUM_33);
+  rtc_gpio_pullup_dis(GPIO_NUM_33);
   //rtc_gpio_pulldown_en(GPIO_NUM_33);
 
   // helps to keep the pin low
@@ -78,7 +86,8 @@ void enterDeepSleep() {
   
   gpio_set_level(GPIO_NUM_33, 0);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,1);
-  esp_deep_sleep_start();
+  delay(100);
+  esp_light_sleep_start();
 }
 
 void doRandomStuff() {
@@ -95,28 +104,12 @@ void doRandomStuff() {
 
 void setup(){
   Serial.begin(115200);
-  Serial.println();
+  Serial.printf("\nBoot 0: Starting initial setup.\n");
 
-  // Do nothing on boot 0 except entering deep sleep
-  if (bootCounter++ == 0) {
-    Serial.println("Boot 0. Entering deep sleep now.");
-    enterDeepSleep();
-  }
+  pinMode(PIR_PIN, INPUT);
 
-  /* Dirty fix:
-   * Added false alarm check because the development board will randomly put GPIO 33 
-   * in active state during deep sleep if the onboard camera has been used before.
-   * GPIO 33 seems to be the most stable out of all possible RTC pins.
-   * -> For further development a different/custom board should be used.
-   */
-  if (analogRead(PIR_PIN) < 4000) {
-    Serial.printf("AnalogRead of PIR sensor: %i", analogRead(PIR_PIN));
-    falseAlarmCounter++;
-    Serial.printf("False alarm! Current false alarm ratio: %d/%d\n", falseAlarmCounter, bootCounter);
-    Serial.println("Entering deep sleep now.");
-    enterDeepSleep();
-  }
-  
+  EEPROM.begin(EEPROM_SIZE);
+
   // initialize camera
   esp_err_t err = arducam_camera_init(PIXFORMAT_JPEG);
   if (err != ESP_OK) {
@@ -127,17 +120,6 @@ void setup(){
   }
   sensor_t * sensor = arducam_camera_sensor_get();
   sensor->set_framesize(sensor, FRAMESIZE_UXGA);
-
-  // take picture
-  camera_fb_t * frameBuffer = NULL;
-  frameBuffer = arducam_camera_fb_get();
-  if (!frameBuffer) {
-    Serial.println("Camera capture failed");
-    // What to do? restart?
-  } else {
-    Serial.println("Camera capture done");
-    Serial.printf("%lu\n", millis());
-  }
 
   // initialize sd
   if(!SD_MMC.begin()){
@@ -167,15 +149,49 @@ void setup(){
     }
   }
 
+  // Prepare TinyML model
+  tf.begin(sine_model);
+  Serial.println("Prepared TinyML model.");
+
+  // allocated time for reading GPS and compass
+  doRandomStuff();
+}
+
+void loop() {
+  Serial.printf("Entering light sleep now.\n\n");
+  enterLightSleep();
+  
+  /* Dirty fix:
+   * Added false alarm check because the development board will randomly put GPIO 33 
+   * in active state during light sleep if the onboard camera has been used before.
+   * GPIO 33 seems to be the most stable out of all possible RTC pins.
+   * -> For further development a different/custom board should be used.
+   */
+  if (analogRead(PIR_PIN) < 4000) {
+    Serial.printf("AnalogRead of PIR sensor: %i", analogRead(PIR_PIN));
+    falseAlarmCounter++;
+    Serial.printf("False alarm! Current false alarm count: %d/%d\n", falseAlarmCounter);
+    Serial.println("Entering light sleep now.\n\n");
+    return;
+  }
+
+  // take picture
+  frameBuffer = arducam_camera_fb_get();
+  if (!frameBuffer) {
+    Serial.println("Camera capture failed");
+    // What to do? restart?
+  } else {
+    Serial.println("Camera capture done");
+  }
+
   // get and update picture index in EEPROM
-  EEPROM.begin(EEPROM_SIZE);
-  unsigned long currentPictureIndex = EEPROM.readULong(PICTURE_INDEX_ADDRESS);
+  currentPictureIndex = EEPROM.readULong(PICTURE_INDEX_ADDRESS);
   EEPROM.writeULong(PICTURE_INDEX_ADDRESS, currentPictureIndex + 1);
   EEPROM.commit(); // .end() ?
   
   // save picture to sd
-  String currentPicturePath = String(PICTURES_PATH) + String(currentPictureIndex) + ".jpg";
-  File file = SD_MMC.open(currentPicturePath.c_str(), "w");
+  currentPicturePath = String(PICTURES_PATH) + String(currentPictureIndex) + ".jpg";
+  file = SD_MMC.open(currentPicturePath.c_str(), "w");
   if(!file){
     Serial.println("Failed to open file for writing");
     // What to do?
@@ -186,8 +202,7 @@ void setup(){
   }
   
   // using sine TinyML model (proof of concept)
-  Serial.println("\nTinyML proof of concept:");
-  tf.begin(sine_model);
+  Serial.printf("\nTinyML proof of concept:\n");
   if (!tf.isOk()) {
     Serial.print("ERROR: ");
     Serial.println(tf.getErrorMessage());
@@ -214,10 +229,6 @@ void setup(){
   // will take at least 10 seconds (GPS and transmission report)
   doRandomStuff();
   
-  // clean up and deep sleep
+  // clean up
   arducam_camera_fb_return(frameBuffer);
-  Serial.println("Entering deep sleep now.");
-  enterDeepSleep();
 }
-
-void loop() {}
