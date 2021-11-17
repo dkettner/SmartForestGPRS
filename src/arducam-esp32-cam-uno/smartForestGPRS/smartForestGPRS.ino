@@ -123,11 +123,12 @@ void doRandomStuff() {
     "Your PC ran into a problem, please restart",
     "Defragmentierung läuft",
     "Installing shaders",
-    "Cleaning rusty contacts"
+    "Cleaning rusty contacts",
+    "Solving traveling salesman in O(1)"
   };
   randomSeed(analogRead(14));
   
-  Serial.print(messages[random(32)]);
+  Serial.print(messages[random(33)]);
   for (int i=0; i<3; i++) {
     delay(2250);
     Serial.print(".");
