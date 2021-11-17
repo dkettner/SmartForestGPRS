@@ -100,7 +100,7 @@ void doRandomStuff() {
     "Den Filter säbern",
     "Computing chance of success",
     "Convincing AI not to turn evil",
-    "Computing the secret to life, the universe, and everything.",
+    "Computing the secret to life, the universe, and everything",
     "Just waisting your time really",
     "Dividing by zero",
     "Sending your data to the NS- uh, I mean, our servers",
@@ -109,7 +109,7 @@ void doRandomStuff() {
     "Downloading more RAM",
     "Updating to Windows Vista",
     "Deleting System32 folder",
-    "Alt-F4 speeds things up.",
+    "Alt-F4 speeds things up",
     "Hold on, I'm just finishing the song",
     "Patience! This is difficult, you know",
     "Discovering new ways of making you wait",
@@ -204,10 +204,9 @@ void loop() {
    * -> For further development a different/custom board should be used.
    */
   if (analogRead(PIR_PIN) < 4000) {
-    Serial.printf("AnalogRead of PIR sensor: %i", analogRead(PIR_PIN));
+    Serial.printf("AnalogRead of PIR sensor: %i\n", analogRead(PIR_PIN));
     falseAlarmCounter++;
-    Serial.printf("False alarm! Current false alarm count: %d/%d\n", falseAlarmCounter);
-    Serial.println("Entering light sleep now.\n\n");
+    Serial.printf("False alarm! Current false alarm count: %d/\n", falseAlarmCounter);
     return;
   }
 
