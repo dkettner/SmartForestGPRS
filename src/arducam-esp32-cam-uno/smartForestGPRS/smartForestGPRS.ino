@@ -91,7 +91,43 @@ void enterLightSleep() {
 }
 
 void doRandomStuff() {
-  Serial.print("Powering up the flux compensator");
+  String messages[] = {
+    "Powering up the flux capacitor",
+    "Go get some coffee, this may take a while",
+    "Just count to 10",
+    "Moving the satellites into position",
+    "Upgrade to PRO to skip this loading screen",
+    "Den Filter säbern",
+    "Computing chance of success",
+    "Convincing AI not to turn evil",
+    "Computing the secret to life, the universe, and everything.",
+    "Just waisting your time really",
+    "Dividing by zero",
+    "Sending your data to the NS- uh, I mean, our servers",
+    "Reheating the coffee",
+    "Does anyone even read this?",
+    "Downloading more RAM",
+    "Updating to Windows Vista",
+    "Deleting System32 folder",
+    "Alt-F4 speeds things up.",
+    "Hold on, I'm just finishing the song",
+    "Patience! This is difficult, you know",
+    "Discovering new ways of making you wait",
+    "Your time is very important to us. Please wait while we ignore you",
+    "You are number 42069 in the queue",
+    "Dusting off spellbooks",
+    "Sharpening pencils",
+    "Ressurecting dead memes",
+    "Removing pen from pineapple",
+    "Loading, please wait",
+    "Your PC ran into a problem, please restart",
+    "Defragmentierung läuft",
+    "Installing shaders",
+    "Cleaning rusty contacts"
+  };
+  randomSeed(analogRead(14));
+  
+  Serial.print(messages[random(32)]);
   for (int i=0; i<3; i++) {
     delay(2250);
     Serial.print(".");
